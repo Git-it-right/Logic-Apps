@@ -1,0 +1,251 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Find_files_in_folder": {
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['onedrive']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/datasets/default/folders/@{encodeURIComponent(encodeURIComponent('C2D580E1BA2BB111!218'))}/search",
+                    "queries": {
+                        "findMode": "OneDriveSearch",
+                        "maxFileCount": 10,
+                        "query": "@variables('filename')"
+                    }
+                },
+                "metadata": {
+                    "6e202211-2856-4d17-9ded-5beb8b8626b0": "/",
+                    "C2D580E1BA2BB111!218": "/Documents"
+                },
+                "runAfter": {
+                    "Initialize_filename": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection"
+            },
+            "For_each": {
+                "actions": {
+                    "Condition": {
+                        "actions": {
+                            "Append_to_array_variable": {
+                                "inputs": {
+                                    "name": "file_paths",
+                                    "value": "@items('For_each')?['Path']"
+                                },
+                                "runAfter": {},
+                                "type": "AppendToArrayVariable"
+                            }
+                        },
+                        "expression": {
+                            "and": [
+                                {
+                                    "greaterOrEquals": [
+                                        "@variables('file_modified_date')",
+                                        "@variables('start_date')"
+                                    ]
+                                },
+                                {
+                                    "lessOrEquals": [
+                                        "@variables('file_modified_date')",
+                                        "@variables('end_date')"
+                                    ]
+                                }
+                            ]
+                        },
+                        "runAfter": {
+                            "Set_variable_2": [
+                                "Succeeded"
+                            ]
+                        },
+                        "type": "If"
+                    },
+                    "Set_variable": {
+                        "inputs": {
+                            "name": "file_last_modified",
+                            "value": "@items('For_each')?['LastModified']"
+                        },
+                        "runAfter": {},
+                        "type": "SetVariable"
+                    },
+                    "Set_variable_2": {
+                        "inputs": {
+                            "name": "file_modified_date",
+                            "value": "@{formatDateTime(variables('file_last_modified'),'yyyy-MM-ddTHH:mm:ssZ')}"
+                        },
+                        "runAfter": {
+                            "Set_variable": [
+                                "Succeeded"
+                            ]
+                        },
+                        "type": "SetVariable"
+                    }
+                },
+                "foreach": "@body('Find_files_in_folder')",
+                "runAfter": {
+                    "Find_files_in_folder": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Foreach"
+            },
+            "Initialize_end_date": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "end_date",
+                            "type": "string",
+                            "value": "@formatDateTime(triggerBody()?['endDate'], 'yyyy-MM-ddTHH:mm:ssZ')"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Initialize_file_last_modified": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "InitializeVariable"
+            },
+            "Initialize_file_last_modified": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "file_last_modified",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Initialize_variable": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "InitializeVariable"
+            },
+            "Initialize_file_paths": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "file_paths",
+                            "type": "array"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Initialize_start_date": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "InitializeVariable"
+            },
+            "Initialize_filename": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "filename",
+                            "type": "string",
+                            "value": "@triggerBody()?['filename']"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Initialize_file_paths": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "InitializeVariable"
+            },
+            "Initialize_start_date": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "start_date",
+                            "type": "string",
+                            "value": "@formatDateTime(triggerBody()?['startDate'], 'yyyy-MM-ddTHH:mm:ssZ')"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Initialize_end_date": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "InitializeVariable"
+            },
+            "Initialize_variable": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "file_modified_date",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "runAfter": {},
+                "type": "InitializeVariable"
+            },
+            "Response": {
+                "inputs": {
+                    "body": "@variables('file_paths')",
+                    "statusCode": 200
+                },
+                "kind": "Http",
+                "runAfter": {
+                    "For_each": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Response"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "defaultValue": {},
+                "type": "Object"
+            }
+        },
+        "triggers": {
+            "manual": {
+                "inputs": {
+                    "method": "POST",
+                    "schema": {
+                        "properties": {
+                            "endDate": {
+                                "type": "string"
+                            },
+                            "fileExtension": {
+                                "type": "string"
+                            },
+                            "filename": {
+                                "type": "string"
+                            },
+                            "startDate": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "kind": "Http",
+                "type": "Request"
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "value": {
+                "onedrive": {
+                    "connectionId": "/subscriptions/6ed03867-b603-4428-ae22-7137bd937955/resourceGroups/OnedriveSearch/providers/Microsoft.Web/connections/onedrive",
+                    "connectionName": "onedrive",
+                    "id": "/subscriptions/6ed03867-b603-4428-ae22-7137bd937955/providers/Microsoft.Web/locations/southafricanorth/managedApis/onedrive"
+                }
+            }
+        }
+    }
+}
