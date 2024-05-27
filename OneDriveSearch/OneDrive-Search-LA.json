@@ -2,92 +2,128 @@
     "definition": {
         "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
         "actions": {
-            "Find_files_in_folder": {
-                "inputs": {
-                    "host": {
-                        "connection": {
-                            "name": "@parameters('$connections')['onedrive']['connectionId']"
-                        }
-                    },
-                    "method": "get",
-                    "path": "/datasets/default/folders/@{encodeURIComponent(encodeURIComponent('C2D580E1BA2BB111!218'))}/search",
-                    "queries": {
-                        "findMode": "OneDriveSearch",
-                        "maxFileCount": 10,
-                        "query": "@variables('filename')"
-                    }
-                },
-                "metadata": {
-                    "6e202211-2856-4d17-9ded-5beb8b8626b0": "/",
-                    "C2D580E1BA2BB111!218": "/Documents"
-                },
-                "runAfter": {
-                    "Initialize_filename": [
-                        "Succeeded"
-                    ]
-                },
-                "type": "ApiConnection"
-            },
-            "For_each": {
+            "For_each_2": {
                 "actions": {
-                    "Condition": {
+                    "Condition_2": {
                         "actions": {
-                            "Append_to_array_variable": {
+                            "Find_files_in_folder_by_path": {
                                 "inputs": {
-                                    "name": "file_paths",
-                                    "value": "@items('For_each')?['Path']"
+                                    "host": {
+                                        "connection": {
+                                            "name": "@parameters('$connections')['onedrive']['connectionId']"
+                                        }
+                                    },
+                                    "method": "get",
+                                    "path": "/datasets/default/findFile",
+                                    "queries": {
+                                        "findMode": "OneDriveSearch",
+                                        "maxFileCount": 100,
+                                        "path": "@items('For_each_2')?['Path']",
+                                        "query": "@variables('filename')"
+                                    }
                                 },
                                 "runAfter": {},
-                                "type": "AppendToArrayVariable"
+                                "type": "ApiConnection"
+                            },
+                            "For_each_3": {
+                                "actions": {
+                                    "Condition": {
+                                        "actions": {
+                                            "Append_to_array_variable_2": {
+                                                "inputs": {
+                                                    "name": "file_paths",
+                                                    "value": {
+                                                        "media": "@{items('For_each_3')?['MediaType']}",
+                                                        "name": "@{items('For_each_3')?['DisplayName']}",
+                                                        "path": "@{items('For_each_3')?['Path']}"
+                                                    }
+                                                },
+                                                "runAfter": {},
+                                                "type": "AppendToArrayVariable"
+                                            }
+                                        },
+                                        "expression": {
+                                            "and": [
+                                                {
+                                                    "greaterOrEquals": [
+                                                        "@variables('file_modified_date')",
+                                                        "@variables('start_date')"
+                                                    ]
+                                                },
+                                                {
+                                                    "lessOrEquals": [
+                                                        "@variables('file_modified_date')",
+                                                        "@variables('end_date')"
+                                                    ]
+                                                },
+                                                {
+                                                    "contains": [
+                                                        "@items('For_each_3')?['Name']",
+                                                        "@variables('file_extension')"
+                                                    ]
+                                                },
+                                                {
+                                                    "contains": [
+                                                        "@items('For_each_3')?['Name']",
+                                                        "@variables('filename')"
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        "runAfter": {
+                                            "Set_variable_2": [
+                                                "Succeeded"
+                                            ]
+                                        },
+                                        "type": "If"
+                                    },
+                                    "Set_variable": {
+                                        "inputs": {
+                                            "name": "file_last_modified",
+                                            "value": "@items('For_each_3')?['LastModified']"
+                                        },
+                                        "runAfter": {},
+                                        "type": "SetVariable"
+                                    },
+                                    "Set_variable_2": {
+                                        "inputs": {
+                                            "name": "file_modified_date",
+                                            "value": "@{formatDateTime(variables('file_last_modified'),'yyyy-MM-ddTHH:mm:ssZ')}"
+                                        },
+                                        "runAfter": {
+                                            "Set_variable": [
+                                                "Succeeded"
+                                            ]
+                                        },
+                                        "type": "SetVariable"
+                                    }
+                                },
+                                "foreach": "@body('Find_files_in_folder_by_path')",
+                                "runAfter": {
+                                    "Find_files_in_folder_by_path": [
+                                        "Succeeded"
+                                    ]
+                                },
+                                "type": "Foreach"
                             }
                         },
                         "expression": {
                             "and": [
                                 {
-                                    "greaterOrEquals": [
-                                        "@variables('file_modified_date')",
-                                        "@variables('start_date')"
-                                    ]
-                                },
-                                {
-                                    "lessOrEquals": [
-                                        "@variables('file_modified_date')",
-                                        "@variables('end_date')"
+                                    "equals": [
+                                        "@items('For_each_2')?['IsFolder']",
+                                        "@true"
                                     ]
                                 }
                             ]
                         },
-                        "runAfter": {
-                            "Set_variable_2": [
-                                "Succeeded"
-                            ]
-                        },
-                        "type": "If"
-                    },
-                    "Set_variable": {
-                        "inputs": {
-                            "name": "file_last_modified",
-                            "value": "@items('For_each')?['LastModified']"
-                        },
                         "runAfter": {},
-                        "type": "SetVariable"
-                    },
-                    "Set_variable_2": {
-                        "inputs": {
-                            "name": "file_modified_date",
-                            "value": "@{formatDateTime(variables('file_last_modified'),'yyyy-MM-ddTHH:mm:ssZ')}"
-                        },
-                        "runAfter": {
-                            "Set_variable": [
-                                "Succeeded"
-                            ]
-                        },
-                        "type": "SetVariable"
+                        "type": "If"
                     }
                 },
-                "foreach": "@body('Find_files_in_folder')",
+                "foreach": "@body('List_files_in_root_folder')",
                 "runAfter": {
-                    "Find_files_in_folder": [
+                    "List_files_in_root_folder": [
                         "Succeeded"
                     ]
                 },
@@ -108,6 +144,19 @@
                         "Succeeded"
                     ]
                 },
+                "type": "InitializeVariable"
+            },
+            "Initialize_file_extension": {
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "file_extension",
+                            "type": "string",
+                            "value": "@{toLower(triggerBody()?['fileExtension'])}"
+                        }
+                    ]
+                },
+                "runAfter": {},
                 "type": "InitializeVariable"
             },
             "Initialize_file_last_modified": {
@@ -185,8 +234,29 @@
                         }
                     ]
                 },
-                "runAfter": {},
+                "runAfter": {
+                    "Initialize_file_extension": [
+                        "Succeeded"
+                    ]
+                },
                 "type": "InitializeVariable"
+            },
+            "List_files_in_root_folder": {
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['onedrive']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/datasets/default/folders"
+                },
+                "runAfter": {
+                    "Initialize_filename": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection"
             },
             "Response": {
                 "inputs": {
@@ -195,7 +265,7 @@
                 },
                 "kind": "Http",
                 "runAfter": {
-                    "For_each": [
+                    "For_each_2": [
                         "Succeeded"
                     ]
                 },
@@ -223,6 +293,9 @@
                                 "type": "string"
                             },
                             "filename": {
+                                "type": "string"
+                            },
+                            "folder": {
                                 "type": "string"
                             },
                             "startDate": {
